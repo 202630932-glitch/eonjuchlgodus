@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>하루 랜덤 시간표 생성기 🎲</title>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #6C5CE7;
+            --primary-hover: #5A4AD1;
+            --bg-gradient: linear-gradient(135deg, #A8C0FF 0%, #3F2B96 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-dark);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 32px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1E1E2F;
+            margin-bottom: 6px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Controls Area */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: #EFEFF6;
+            padding: 4px;
+            border-radius: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 0;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: #FFFFFF;
+            color: var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px 0;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.35);
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .generate-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Timetable List */
+        .timetable {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .timetable::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .timetable::-webkit-scrollbar-thumb {
+            background: #DDD;
+            border-radius: 10px;
+        }
+
+        .time-slot {
+            display: flex;
+            align-items: center;
+            background: #F8F9FA;
+            border: 1px solid #E9ECEF;
+            border-radius: 16px;
+            padding: 14px 18px;
+            transition: all 0.2s ease;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .time-slot:hover {
+            transform: scale(1.01);
+            background: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .time-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: #EEECFC;
+            padding: 6px 12px;
+            border-radius: 10px;
+            min-width: 110px;
+            text-align: center;
+            margin-right: 14px;
+            white-space: nowrap;
+        }
+
+        .activity-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .activity-emoji {
+            font-size: 1.4rem;
+        }
+
+        .activity-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2D3436;
+        }
+
+        /* Action Buttons */
+        .sub-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .sub-btn {
+            flex: 1;
+            background: #EFEFF6;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .sub-btn:hover {
+            background: #E2E2EC;
+        }
+
+        /* Toast Message */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #2D3436;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>오늘의 랜덤 시간표 ⏰</h1>
+            <p>오늘 하루를 랜덤으로 결정해 드립니다!</p>
+        </header>
+
+        <!-- 모드 선택 및 생성 버튼 -->
+        <div class="controls">
+            <div class="mode-selector">
+                <button class="mode-btn active" onclick="setMode('normal', this)">갓생 라이프 🌿</button>
+                <button class="mode-btn" onclick="setMode('lazy', this)">휴식&힐링 🛋️</button>
+                <button class="mode-btn" onclick="setMode('crazy', this)">제멋대로 🤪</button>
+            </div>
+            <button class="generate-btn" onclick="generateSchedule()">
+                <span>시간표 랜덤 생성하기</span> 🎲
+            </button>
+        </div>
+
+        <!-- 시간표 출력 영역 -->
+        <div class="timetable" id="timetable">
+            <!-- 자바스크립트로 생성됨 -->
+        </div>
+
+        <div class="sub-actions">
+            <button class="sub-btn" onclick="copySchedule()">📋 시간표 복사하기</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">시간표가 클립보드에 복사되었습니다!</div>
+
+    <script>
+        // 무작위 일정 데이터 베이스
+        const activities = {
+            normal: [
+                { emoji: "🧘", name: "명상 및 스트레칭" },
+                { emoji: "📖", name: "독서하기" },
+                { emoji: "🏃", name: "조깅하기" },
+                { emoji: "💻", name: "자기계발/공부" },
+                { emoji: "🧹", name: "방 청소 및 정리" },
+                { emoji: "☕", name: "여유롭게 커피 한 잔" },
+                { emoji: "✍️", name: "일기 작성 및 목표 점검" },
+                { emoji: "🥗", name: "건강한 식사하기" },
+                { emoji: "🎧", name: "팟캐스트/음악 감상" },
+                { emoji: "💧", name: "물 500ml 마시기 및 휴식" }
+            ],
+            lazy: [
+                { emoji: "🛋️", name: "소파와 한 몸 되기" },
+                { emoji: "🎬", name: "넷플릭스 몰아보기" },
+                { emoji: "😴", name: "낮잠 자기" },
+                { emoji: "🍕", name: "배달 음식 시켜 먹기" },
+                { emoji: "📱", name: "SNS/유튜브 무한 탐색" },
+                { emoji: "🎮", name: "게임 한 판 하기" },
+                { emoji: "🍧", name: "아이스크림 먹기" },
+                { emoji: "🛌", name: "침대에서 뒹굴거리기" },
+                { emoji: "🎧", name: "ASMR 들으며 멍때리기" }
+            ],
+            crazy: [
+                { emoji: "🎤", name: "방구석 솔로 콘서트" },
+                { emoji: "💃", name: "아무렇게나 막춤 추기" },
+                { emoji: "🧩", name: "새로운 취미 탐색" },
+                { emoji: "🧁", name: "갑자기 야식 레시피 도전" },
+                { emoji: "📦", name: "장바구니 아이템 쇼핑" },
+                { emoji: "🧩", name: "어릴 적 추억의 게임하기" },
+                { emoji: "📸", name: "셀카 100장 찍기" },
+                { emoji: "🚶", name: "발길 닿는 대로 산책하기" }
+            ]
+        };
+
+        const timeSlots = [
+            "08:00 - 09:30",
+            "09:30 - 11:00",
+            "11:00 - 12:30",
+            "12:30 - 14:00",
+            "14:00 - 15:30",
+            "15:30 - 17:00",
+            "17:00 - 18:30",
+            "18:30 - 20:00",
+            "20:00 - 22:00"
+        ];
+
+        let currentMode = 'normal';
+
+        function setMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            generateSchedule();
+        }
+
+        function getRandomItem(array, excludeList) {
+            const available = array.filter(item => !excludeList.includes(item.name));
+            if (available.length === 0) return array[Math.floor(Math.random() * array.length)];
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        function generateSchedule() {
+            const timetableEl = document.getElementById('timetable');
+            timetableEl.innerHTML = '';
+
+            const currentPool = activities[currentMode];
+            const usedNames = [];
+
+            timeSlots.forEach((slot, index) => {
+                const activity = getRandomItem(currentPool, usedNames);
+                usedNames.push(activity.name);
+
+                const slotEl = document.createElement('div');
+                slotEl.className = 'time-slot';
+                slotEl.style.animationDelay = `${index * 0.05}s`;
+
+                slotEl.innerHTML = `
+                    <div class="time-badge">${slot}</div>
+                    <div class="activity-info">
+                        <span class="activity-emoji">${activity.emoji}</span>
+                        <span class="activity-name">${activity.name}</span>
+                    </div>
+                `;
+
+                timetableEl.appendChild(slotEl);
+            });
+
+            // 폭죽 효과
+            confetti({
+                particleCount: 40,
+                spread: 60,
+                origin: { y: 0.8 }
+            });
+        }
+
+        function copySchedule() {
+            const slots = document.querySelectorAll('.time-slot');
+            if (slots.length === 0) return;
+
+            let text = "📅 [오늘의 랜덤 시간표]\n\n";
+            slots.forEach(slot => {
+                const time = slot.querySelector('.time-badge').innerText;
+                const emoji = slot.querySelector('.activity-emoji').innerText;
+                const name = slot.querySelector('.activity-name').innerText;
+                text += `${time} | ${emoji} ${name}\n`;
+            });
+
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("시간표가 클립보드에 복사되었습니다!");
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 초기 실행
+        generateSchedule();
+    </script>
+</body>
+</html> 
